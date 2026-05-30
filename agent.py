@@ -330,13 +330,27 @@ class Agent:
         
         # Check for Calculator triggers
         math_indicators = ["sqrt", "+", "-", "*", "/", "%", "pow", "math", "evaluate", "calculate"]
-        if any(ind in query_lower for ind in math_indicators) or re.search(r'\d+\s*[+\-*/]\s*\d+', query_lower):
-            # Try to extract the mathematical expression
-            expr = query
-            for term in ["calculate", "what is", "evaluate", "equal to", "?"]:
-                expr = expr.lower().replace(term, "")
-            expr = expr.strip()
-            return {"tool": "calculator", "args": {"expression": expr}}
+        has_math = any(ind in query_lower for ind in math_indicators) or re.search(r'\d+\s*[+\-*/]\s*\d+', query_lower)
+        
+        if has_math:
+            # Extract the mathematical expression more carefully
+            expr = query.strip()
+            
+            # Remove common question phrases
+            remove_phrases = [
+                "what is", "what's", "calculate", "compute", "evaluate", 
+                "solve", "find", "tell me", "can you", "please"
+            ]
+            
+            for phrase in remove_phrases:
+                expr = re.sub(r'\b' + phrase + r'\b', '', expr, flags=re.IGNORECASE)
+            
+            # Remove question marks and extra spaces
+            expr = expr.replace("?", "").strip()
+            
+            # If expression is not empty and contains math, use it
+            if expr and (any(ind in expr.lower() for ind in math_indicators) or re.search(r'\d', expr)):
+                return {"tool": "calculator", "args": {"expression": expr}}
 
         # Check for conversational triggers
         conversational_indicators = ["who are you", "hello", "hi ", "hey", "tell me a joke", "what is your name"]
