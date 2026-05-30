@@ -38,6 +38,9 @@ class CalculatorTool(Tool):
         if not expression:
             raise ValueError("No expression provided to the calculator.")
 
+        # Replace ln with log (Python's log is natural log)
+        expression = expression.replace("ln(", "log(")
+
         # Sanitization: allow only numbers, math operators, spaces, parentheses, and math functions
         # This prevents execution of arbitrary code via eval.
         allowed_chars = re.compile(r'^[0-9+\-*/().\s%]+$')

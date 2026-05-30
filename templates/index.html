@@ -771,10 +771,14 @@
         }
 
         function formatMessageContent(text) {
-            // Replace newlines with <br> and bold tags
+            // Replace newlines with <br>, bold tags, and make URLs clickable
             return text
                 .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                // Convert URLs to clickable links
+                .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color: #3b82f6; text-decoration: underline;">$1</a>')
+                // Convert 🔗 emoji followed by URL to clickable link
+                .replace(/🔗\s*(https?:\/\/[^\s<]+)/g, '🔗 <a href="$1" target="_blank" style="color: #3b82f6; text-decoration: underline;">$1</a>');
         }
 
         function addTypingIndicator() {
