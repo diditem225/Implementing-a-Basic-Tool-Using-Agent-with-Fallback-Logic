@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Tool Fallback Playground</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(22, 28, 45, 0.4);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            
+            --glow-cyan: rgba(6, 182, 212, 0.15);
+            --glow-green: rgba(16, 185, 129, 0.15);
+            --glow-red: rgba(239, 68, 68, 0.15);
+            --glow-purple: rgba(139, 92, 246, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            border-bottom: 1px solid var(--panel-border);
+            padding: 1.25rem 2rem;
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00f0ff 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 280px 1fr 380px;
+            flex: 1;
+            height: calc(100vh - 65px);
+            max-height: calc(100vh - 65px);
+            overflow: hidden;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 240px 1fr 300px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .main-container {
+                grid-template-columns: 220px 1fr;
+            }
+            .trace-panel {
+                display: none !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar-left {
+                display: none !important;
+            }
+        }
+
+        /* CUSTOM premium scrollbars to ensure visibility & fit dark style */
+        .chat-messages::-webkit-scrollbar,
+        .trace-panel::-webkit-scrollbar,
+        .sidebar-left::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-messages::-webkit-scrollbar-track,
+        .trace-panel::-webkit-scrollbar-track,
+        .sidebar-left::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb,
+        .trace-panel::-webkit-scrollbar-thumb,
+        .sidebar-left::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            border-radius: 4px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover,
+        .trace-panel::-webkit-scrollbar-thumb:hover,
+        .sidebar-left::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        /* LEFT SIDEBAR: CONTROLS & API KEYS */
+        .sidebar-left {
+            background: rgba(15, 22, 38, 0.6);
+            border-right: 1px solid var(--panel-border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        input[type="text"], input[type="password"] {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            color: white;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            user-select: none;
+            margin-bottom: 0.5rem;
+        }
+
+        .checkbox-label input {
+            cursor: pointer;
+            accent-color: var(--accent-blue);
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-description {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        /* CHAT CONTAINER */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            background: #0b101d;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            line-height: 1.5;
+            position: relative;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--accent-blue);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.agent {
+            align-self: flex-start;
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--panel-border);
+            color: var(--text-primary);
+            border-bottom-left-radius: 2px;
+        }
+
+        .message-meta {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .message.agent .message-meta {
+            color: var(--text-secondary);
+        }
+
+        .route-badge {
+            font-size: 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-direct { background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.4); }
+        .badge-tool { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .badge-fallback { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+        .chat-input-area {
+            border-top: 1px solid var(--panel-border);
+            padding: 1.25rem 2rem;
+            background: rgba(15, 22, 38, 0.8);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .input-wrapper {
+            position: relative;
+            flex: 1;
+        }
+
+        .chat-input-area input[type="text"] {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 0.8rem 1rem;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .chat-input-area input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .send-btn {
+            background: var(--accent-blue);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .send-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .send-btn:active {
+            transform: translateY(0);
+        }
+
+        /* PRESET TEMPLATES GRID */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            text-align: left;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+
+        /* RIGHT PANEL: TRACE LOG */
+        .trace-panel {
+            background: rgba(15, 22, 38, 0.6);
+            border-left: 1px solid var(--panel-border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .trace-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            flex: 1;
+            margin-top: 1rem;
+        }
+
+        .trace-empty {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 70%;
+            color: var(--text-secondary);
+            text-align: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            border: 1px dashed var(--panel-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .trace-empty svg {
+            width: 48px;
+            height: 48px;
+            opacity: 0.3;
+        }
+
+        .trace-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 0.9rem;
+            position: relative;
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        .trace-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            border-top-left-radius: 10px;
+            border-bottom-left-radius: 10px;
+        }
+
+        .trace-card.INITIALIZATION::before { background-color: var(--accent-blue); }
+        .trace-card.ROUTING::before { background-color: var(--accent-purple); }
+        .trace-card.EXECUTION::before { background-color: var(--accent-cyan); }
+        .trace-card.VALIDATION::before { background-color: var(--accent-yellow); }
+        .trace-card.GENERATION::before { background-color: var(--accent-green); }
+        .trace-card.FAILED::before { background-color: var(--accent-red); }
+
+        .trace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .trace-stage {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .trace-card.INITIALIZATION .trace-stage { color: var(--accent-blue); }
+        .trace-card.ROUTING .trace-stage { color: var(--accent-purple); }
+        .trace-card.EXECUTION .trace-stage { color: var(--accent-cyan); }
+        .trace-card.VALIDATION .trace-stage { color: var(--accent-yellow); }
+        .trace-card.GENERATION .trace-stage { color: var(--accent-green); }
+
+        .trace-status {
+            font-size: 0.7rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .status-success { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .status-failed { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+        .status-running { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); animation: pulse 1.5s infinite; }
+        .status-warning { background: rgba(245, 158, 11, 0.15); color: var(--accent-yellow); }
+        .status-info { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .trace-body {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            padding: 0.5rem 0.6rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            color: #d1d5db;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .trace-time {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            margin-top: 0.4rem;
+            text-align: right;
+        }
+
+        /* KEY DETAILS IN LOG */
+        .log-key { color: var(--accent-cyan); }
+        .log-val { color: var(--text-primary); }
+
+        .route-glow-direct { box-shadow: 0 0 15px var(--glow-purple); }
+        .route-glow-tool { box-shadow: 0 0 15px var(--glow-green); }
+        .route-glow-fallback { box-shadow: 0 0 15px var(--glow-red); }
+
+        /* LOADING ANIMATION FOR CHAT */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0.5rem;
+        }
+
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🤖 Agent Fallback Playground</h1>
+        <div id="modeBadge" class="header-subtitle">Mode: Local Mock (Offline)</div>
+    </header>
+
+    <div class="main-container">
+        
+        <!-- LEFT PANEL: CONTROLS -->
+        <div class="sidebar-left">
+            <div>
+                <div class="section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Credentials
+                </div>
+                <div class="card">
+                    <div class="form-group">
+                        <label for="apiKey">Groq API Key</label>
+                        <input type="password" id="apiKey" placeholder="gsk_..." autocomplete="off">
+                        <p class="checkbox-description" style="margin-left:0; margin-top:0.25rem;">
+                            Keys are saved in local browser storage and processed safely on your backend. Leaving this blank runs fast Mock logic.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    Failure Simulator
+                </div>
+                <div class="card">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="failCalc">
+                        Force Calc Timeout
+                    </label>
+                    <div class="checkbox-description">
+                        Forces the Calculator to freeze, triggering a `TimeoutError` and agent fallback.
+                    </div>
+
+                    <label class="checkbox-label" style="margin-top: 0.75rem;">
+                        <input type="checkbox" id="failSearch">
+                        Force Search Failure
+                    </label>
+                    <div class="checkbox-description">
+                        Simulates an API breakdown (HTTP 503 error) when calling the search index, triggering fallback.
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    Test Triggers
+                </div>
+                <div class="preset-grid">
+                    <button class="preset-btn" onclick="setQuery('What is sqrt(144) + 5?')">🧮 Math: Success</button>
+                    <button class="preset-btn" onclick="setQuery('latest hantavirus news')">🔍 Live: Hantavirus</button>
+                    <button class="preset-btn" onclick="setQuery('current weather in Paris')">🔍 Live: Weather</button>
+                    <button class="preset-btn" onclick="setQuery('latest AI technology news')">🔍 Live: AI News</button>
+                    <button class="preset-btn" onclick="setQuery('Who are you?')">💬 Direct Convers.</button>
+                    <button class="preset-btn" onclick="setQuery('What is 12 * 8?'); document.getElementById('failCalc').checked = true;">⏳ Math: Timeout</button>
+                    <button class="preset-btn" onclick="setQuery('Search 404 test')">⚠️ Search: Error 404</button>
+                    <button class="preset-btn" onclick="setQuery('Search Tunisia')">🔍 Search: Tunisia</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER PANEL: CHAT -->
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message agent">
+                    <div class="message-meta">Agent Framework</div>
+                    Welcome! I am an AI agent equipped with a **Calculator** tool, a **Real-Time Google Search** tool (powered by SerpAPI), output validator checks, and robust **LLM fallback** logic.
+                    <br><br>
+                    **Important**: To enable real-time web search, you need a SerpAPI key. Get one free at <a href="https://serpapi.com" target="_blank" style="color: #3b82f6;">serpapi.com</a> (100 searches/month free). Add it to your `.env` file as `SERPAPI_KEY=your_key`.
+                    <br><br>
+                    Try clicking any **Test Trigger** on the left, or input your own query. The search tool fetches live data from Google for current news, facts, and information. You will see my live reasoning stages and fallbacks mapped out in the trace panel on the right.
+                </div>
+            </div>
+            
+            <div class="chat-input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="userInput" placeholder="Ask the agent a question..." onkeydown="if(event.key === 'Enter') sendQuery()">
+                </div>
+                <button class="send-btn" onclick="sendQuery()">Send</button>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: TRACE LOGS -->
+        <div class="trace-panel">
+            <div class="section-title" style="margin-bottom:0.5rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                Execution Trace Logs
+            </div>
+            <div class="trace-container" id="traceContainer">
+                <div class="trace-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    <div>Waiting for a query...</div>
+                    <div style="font-size:0.75rem;">Logs showing the decision routing path and fallback execution traces will generate here.</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Load API Key from local storage on load
+        document.getElementById('apiKey').value = localStorage.getItem('groq_api_key') || '';
+        
+        // Save API Key changes
+        document.getElementById('apiKey').addEventListener('input', (e) => {
+            localStorage.setItem('groq_api_key', e.target.value.trim());
+        });
+
+        function setQuery(text) {
+            document.getElementById('userInput').value = text;
+        }
+
+        async function sendQuery() {
+            const inputField = document.getElementById('userInput');
+            const query = inputField.value.trim();
+            if (!query) return;
+
+            // Clear input
+            inputField.value = '';
+
+            // User message in chat
+            addChatMessage('user', query);
+
+            // Add typing indicator
+            const typingIndicatorId = addTypingIndicator();
+
+            // Prepare Payload
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const forceCalcTimeout = document.getElementById('failCalc').checked;
+            const forceSearchError = document.getElementById('failSearch').checked;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: query,
+                        groq_api_key: apiKey,
+                        force_calc_timeout: forceCalcTimeout,
+                        force_search_error: forceSearchError
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Remove typing indicator
+                removeElement(typingIndicatorId);
+
+                if (data.error) {
+                    addChatMessage('agent', `⚠️ Error: ${data.message || data.error}`);
+                    renderTraceEmpty(`Backend Error: ${data.error}`);
+                    return;
+                }
+
+                // Update Header Badge
+                const modeBadge = document.getElementById('modeBadge');
+                if (data.mock_mode) {
+                    modeBadge.textContent = "Mode: Local Mock (Offline)";
+                    modeBadge.style.color = 'var(--text-secondary)';
+                } else {
+                    modeBadge.textContent = "Mode: Groq LLM (Online)";
+                    modeBadge.style.color = '#38bdf8';
+                }
+
+                // Append agent response and route
+                const finalGenerationStep = data.trace.find(step => step.stage === 'GENERATION');
+                const routeType = finalGenerationStep ? finalGenerationStep.status : 'DIRECT';
+                
+                addChatMessage('agent', data.answer, routeType);
+                
+                // Render the detailed execution trace
+                renderTrace(data.trace);
+
+            } catch (err) {
+                removeElement(typingIndicatorId);
+                addChatMessage('agent', `⚠️ Failed to communicate with server: ${err.message}`);
+                renderTraceEmpty(`Connection lost: ${err.message}`);
+            }
+        }
+
+        function addChatMessage(sender, text, routeType = '') {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            // Attach route class to glow
+            if (routeType === 'DIRECT') messageDiv.classList.add('route-glow-direct');
+            if (routeType === 'TOOL_SUCCESS') messageDiv.classList.add('route-glow-tool');
+            if (routeType === 'FALLBACK') messageDiv.classList.add('route-glow-fallback');
+
+            let metaText = sender === 'user' ? 'You' : 'Agent';
+            let badgeHtml = '';
+            
+            if (routeType) {
+                let badgeClass = 'badge-direct';
+                let label = 'Direct LLM';
+                if (routeType === 'TOOL_SUCCESS') {
+                    badgeClass = 'badge-tool';
+                    label = 'Tool Success';
+                } else if (routeType === 'FALLBACK') {
+                    badgeClass = 'badge-fallback';
+                    label = 'LLM Fallback';
+                }
+                badgeHtml = `<span class="route-badge ${badgeClass}">${label}</span>`;
+            }
+
+            messageDiv.innerHTML = `
+                <div class="message-meta">
+                    <span>${metaText}</span>
+                    ${badgeHtml}
+                </div>
+                <div>${formatMessageContent(text)}</div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function formatMessageContent(text) {
+            // Replace newlines with <br> and bold tags
+            return text
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        }
+
+        function addTypingIndicator() {
+            const chatMessages = document.getElementById('chatMessages');
+            const indicatorDiv = document.createElement('div');
+            indicatorDiv.className = 'message agent';
+            const id = 'typing_' + Date.now();
+            indicatorDiv.id = id;
+            indicatorDiv.innerHTML = `
+                <div class="message-meta">Agent is thinking</div>
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+            chatMessages.appendChild(indicatorDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return id;
+        }
+
+        function removeElement(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function renderTraceEmpty(message) {
+            const container = document.getElementById('traceContainer');
+            container.innerHTML = `
+                <div class="trace-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <div>${message}</div>
+                </div>
+            `;
+        }
+
+        function renderTrace(trace) {
+            const container = document.getElementById('traceContainer');
+            container.innerHTML = ''; // Clear previous
+
+            trace.forEach(step => {
+                const card = document.createElement('div');
+                card.className = `trace-card ${step.stage}`;
+                
+                let statusClass = 'status-info';
+                if (step.status === 'SUCCESS' || step.status === 'PASSED' || step.status === 'TOOL_SUCCESS') {
+                    statusClass = 'status-success';
+                } else if (step.status === 'FAILED' || step.status === 'FAILURE' || step.status === 'FALLBACK') {
+                    statusClass = 'status-failed';
+                } else if (step.status === 'RUNNING') {
+                    statusClass = 'status-running';
+                } else if (step.status === 'LOW_CONFIDENCE') {
+                    statusClass = 'status-warning';
+                }
+
+                // Clean formatting for JSON details
+                let detailsText = '';
+                try {
+                    detailsText = JSON.stringify(step.details, null, 2);
+                } catch(e) {
+                    detailsText = step.details;
+                }
+
+                // Add syntax highlighting helper to logs
+                detailsText = detailsText
+                    .replace(/"([^"]+)":/g, '<span class="log-key">"$1"</span>:')
+                    .replace(/: "([^"]+)"/g, ': <span class="log-val">"$1"</span>');
+
+                card.innerHTML = `
+                    <div class="trace-header">
+                        <span class="trace-stage">${step.stage}</span>
+                        <span class="trace-status ${statusClass}">${step.status}</span>
+                    </div>
+                    <pre class="trace-body">${detailsText}</pre>
+                    <div class="trace-time">+${step.timestamp}s</div>
+                `;
+                container.appendChild(card);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+    </script>
+</body>
+</html>
