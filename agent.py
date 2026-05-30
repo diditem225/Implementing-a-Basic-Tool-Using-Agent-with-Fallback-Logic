@@ -303,12 +303,18 @@ class Agent:
             "You are the routing system of an AI Agent. Your job is to classify the user query "
             "and determine if it requires a tool, or can be answered directly.\n\n"
             "Available tools:\n"
-            "1. calculator: Use this for arithmetic and math computations (e.g. square roots, products, additions, expressions).\n"
+            "1. calculator: Use this ONLY for numerical arithmetic and computations (e.g. sqrt(144) + 5, 12 * 8, ln(100)).\n"
+            "   DO NOT use for: limits, derivatives, integrals, symbolic math, or calculus problems.\n"
             "   Required arg keys: {'expression': 'string math expression to evaluate'}\n"
-            "2. search: Use this for factual questions, explanations, definitions, and general knowledge (e.g. countries, weather, concepts).\n"
+            "2. search: Use this for:\n"
+            "   - Factual questions, explanations, definitions, and general knowledge\n"
+            "   - Calculus problems (limits, derivatives, integrals)\n"
+            "   - Symbolic mathematics\n"
+            "   - Any question involving 'limit', 'infinity', 'derivative', 'integral'\n"
             "   Required arg keys: {'query': 'string search query'}\n"
             "3. direct: Use this if the query is a simple greeting, conversational question about yourself, or doesn't need external data.\n"
             "   Required arg keys: {}\n\n"
+            "IMPORTANT: If the query mentions 'limit', 'infinity', 'derivative', 'integral', or any calculus concept, use 'search', NOT 'calculator'.\n\n"
             "Return ONLY a JSON object in this format:\n"
             '{"tool": "tool_name", "args": {"arg_name": "arg_value"}}'
         )
@@ -331,8 +337,17 @@ class Agent:
     def _mock_route_query(self, query: str) -> Dict[str, Any]:
         query_lower = query.lower().strip()
         
-        # Check for Calculator triggers
-        math_indicators = ["sqrt", "+", "-", "*", "/", "%", "pow", "math", "evaluate", "calculate"]
+        # Check for calculus/symbolic math keywords - route to search/LLM
+        calculus_keywords = [
+            "limit", "derivative", "integral", "differentiate", "integrate",
+            "infinity", "infinite", "approaches", "tends to", "converges",
+            "diverges", "series", "sequence", "taylor", "maclaurin"
+        ]
+        if any(keyword in query_lower for keyword in calculus_keywords):
+            return {"tool": "search", "args": {"query": query}}
+        
+        # Check for Calculator triggers (numerical calculations only)
+        math_indicators = ["sqrt", "+", "-", "*", "/", "%", "pow", "calculate", "compute"]
         has_math = any(ind in query_lower for ind in math_indicators) or re.search(r'\d+\s*[+\-*/]\s*\d+', query_lower)
         
         if has_math:
